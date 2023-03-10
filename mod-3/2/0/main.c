@@ -6,38 +6,46 @@ Problem inf-III-02-0: posix/signals/count-sigint
 
 Семантика повединия сигналов (Sys-V или BSD) считается не определенной.
 */
-#include <stdio.h>
-#include <stdbool.h>
+
+// Актуальную версию отправил Э. Атабекян
+
+#include <stdlib.h>
 #include <signal.h>
-#include <string.h>
 #include <unistd.h>
-
+#include <string.h>
 #include <stdio.h>
-#include <stdbool.h>
-#include <signal.h>
-#include <string.h>
-#include <unistd.h>
+#include <sys/types.h>
 
-bool flag = false;
-unsigned int count = 0;
 
-void analyze(int signal)
-{
-    if (signal == SIGINT) count++;
-    if (signal == SIGTERM) flag = true;
+volatile sig_atomic_t counter = 0;
+volatile sig_atomic_t exit_trigger = 0;
+
+void SIGINTHandler() {
+    counter++;
 }
 
-int main()
-{
-    struct sigaction sig_act;
-    sig_act.sa_handler = analyze;
+void SIGTERMHandler() {
+    exit_trigger = 1;
+}
 
-    sigaction(SIGINT, &sig_act, NULL);
-    sigaction(SIGTERM, &sig_act, NULL);
 
-    printf("%i\n", getpid());
+int main () {
+    struct sigaction sigint_handler;
+    memset(&sigint_handler, 0, sizeof(sigint_handler));
+    sigint_handler.sa_handler = SIGINTHandler;
+    sigint_handler.sa_flags = SA_RESTART;
+    sigaction(SIGINT, &sigint_handler, NULL);
+
+    struct sigaction sigterm_handler;
+    memset(&sigterm_handler, 0, sizeof(sigterm_handler));
+    sigterm_handler.sa_handler = SIGTERMHandler;
+    sigterm_handler.sa_flags = SA_RESTART;
+    sigaction(SIGTERM, &sigterm_handler, NULL);
+    printf("%d\n", getpid());
     fflush(stdout);
-
-    while (flag == false) {}
-    printf("%i\n", count);
+    while (!exit_trigger) {
+        pause();
+    }
+    printf("%d\n", counter);
+    return 0;
 }
