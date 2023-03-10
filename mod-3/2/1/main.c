@@ -11,23 +11,28 @@ Problem inf-III-02-1: posix/signals/do-actions
 Семантика повединия сигналов (Sys-V или BSD) считается не определенной.
 
 Не забывайте выталкивать буфер вывода.
-*/
+*
+
+// Актуальную версию отправил Э. Атабекян
+
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
-sig_atomic_t number = 0;
-sig_atomic_t flag = 0;
+volatile sig_atomic_t number = 0;
+volatile sig_atomic_t flag = 0;
 
 void handle_sa(int signum)
 {
     if (SIGUSR1 == signum) {
         number += 1;
         printf("%i\n", number);
+        fflush(stdout);
     } else if (SIGUSR2 == signum) {
         number *= -1;
         printf("%i\n", number);
+        fflush(stdout);
     } else
         flag = 1;
 }
@@ -43,11 +48,11 @@ int main()
     sigaction(SIGUSR1, &sig_act, 0);
     sigaction(SIGUSR2, &sig_act, 0);
 
-    printf("%i\n", getpid());
+    printf("%d\n", getpid());
     fflush(stdout);
 
-    scanf("%i", &number);
+    scanf("%d", &number);
     while (!flag) {
-        pause();
+      pause(); 
     }
 }
